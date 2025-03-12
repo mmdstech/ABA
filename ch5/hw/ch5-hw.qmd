@@ -61,33 +61,102 @@ so the $P(\lambda > 10)$ is:
 
 ## Exercise 5.6 (Text messages with data) 
 Continuing with Exercise 5.5, you collect data from six friends. They received 7, 3, 8, 9, 10, 12 text messages in the previous hour.
-  a.  Plot the resulting likelihood function of λ
-  b.  Plot the prior pdf, likelihood function, and the posterior pdf of λ
-  c.  Use $summarize_gamma_poisson()$ to calculate descriptive statistics for the prior and the posterior models of λ
-  d.  Comment on how your understanding about λ changed from the prior (in the previous exercise) to the posterior based on the data you collected from your friends
   
 <br>
-### a. Plot Poisson Likelihood
+### a. Plot the resulting likelihood function of λ
+
 ```{r}
 plot_poisson_likelihood(y = c(7,3,8,9,10,12), lambda_upper_bound = 15)
 ```
 
-### b. Plot Prior PDF, Likelihood Func., & Posterior PDF
+### b. Plot the prior pdf, likelihood function, and the posterior pdf of λ
 
 ```{r}
 plot_gamma_poisson(shape = 400, rate = 80, sum_y = 49, n = 6)
 ```
 
-### c. Descriptive Stats
+### c. Use summarize_gamma_poisson() to calculate descriptive statistics for the prior and the posterior models of λ
+
 ```{r}
 (summarize_gamma_poisson(shape = 400, rate = 80, sum_y = 49, n = 6))
 ```
 
-### d. Comments
-<br>
+### d. Comment on how your understanding about λ changed from the prior (in the previous exercise) to the posterior based on the data you collected from your friends
+
 The likelihood function has pulled the Posterior PDF for λ to the right, indicating that the E[λ] is slightly to the right of our prior belief. The peak of the posterior is slightly taller as well, which is good, as this indicates a smaller variance in our posterior distribution from the added observations.
-<br>
 
 ---
 
+## Exercise 5.9 (Investing in stock)
+You just bought stock in FancyTech. Let random variable μ be the average dollar amount that your FancyTech stock goes up or down in a one-day period. At first, you believe that μ is 7.2 dollars with a standard deviation of 2.6 dollars.
+  
+### a. Tune and plot an appropriate Normal prior model for μ
+
+```{r}
+(plot_normal(7.2, 2.6))
+```
+
+### b. According to your plot, does it seem plausible that the FancyTech stock would increase by an average of 7.6 dollars in a day?
+
+The mode/peak is close enough to 7.6, that I would say it is plausible.
+
+### c. Does it seem plausible that the FancyTech stock would increase by an average of 4 dollars in a day?
+
+4 is quite left of the mode/peak, but still within 2 standard deviations (lower bound: $7.2-2(2.6)=2.0$), so it is plausible, just less likely than 7.6 dollars in a day.
+
+### d. What is the prior probability that, on average, the stock price goes down? Hint: pnorm().
+
+```{r}
+(round(pnorm(0, 7.2, 2.6), 4))
+```
+
+### e. What is the prior probability that, on average, your stock price goes up by more than 8 dollars per day?
+
+```{r}
+(round(1 - pnorm(8, 7.2, 2.6), 4))
+```
+
+## Exercise 5.10 (Investing in stock with data)
+Continuing with Exercise 5.9, it’s reasonable to assume that the daily changes in FancyTech stock value are Normally distributed around an unknown mean of μ with a known standard deviation of σ = 2 dollars. On a random sample of 4 days, you observe changes in stock value of -0.7, 1.2, 4.5, and -4 dollars.
+
+### a. Plot the corresponding likelihood function of μ.
+
+```{r}
+(plot_normal_likelihood(y = c(-0.7,1.2,4.5,-4), sigma = 2))
+```
+
+### b. Plot the prior pdf, likelihood function, and the posterior pdf for μ.
+
+y_bar:
+```{r}
+mean(c(-0.7,1.2,4.5,-4))
+```
+
+Plot:
+```{r}
+(plot_normal_normal(mean = 7.2, sd = 2.6, sigma = 2, y_bar = 0.25, n = 4))
+```
+
+### c. Use summarize_normal_normal() to calculate descriptive statistics for the prior and the posterior models.
+
+```{r}
+(summarize_normal_normal(mean = 7.2, sd = 2.6, sigma = 2, y_bar = 0.25, n = 4))
+```
+
+### d. Comment on how your understanding about μ evolved from the prior (in the previous exercise) to the posterior based on the observed data.
+
+The observed date generated a likelihood PDF that, in conjunction with our prior PDF, generated a posterior PDF far to the left our our prior belief.
+
+### e. What is the posterior probability that, on average, the stock price goes down? Hint: pnorm().
+
+```{r}
+(round(pnorm(0, mean = 1.1456, sd = 0.9333), 4))
+```
+
+
+### f. What is the posterior probability that, on average, your stock price goes up by more than 8 dollars per day?
+
+```{r}
+(round(1 - pnorm(8, mean = 1.1456, sd = 0.9333), 4))
+```
 
