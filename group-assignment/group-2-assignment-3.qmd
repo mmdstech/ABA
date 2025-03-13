@@ -1,0 +1,231 @@
+---
+title: "Group 2 Assignment 3"
+subtitle: "Hotel & Resort Cancellations"
+author:
+  - Jennifer Bercera
+  - Kristina Diaz-Kerkado
+  - Megan Marsh
+  - Matt McGehee
+  - Jegg Ononiewu
+date-format: long
+format:
+  revealjs:
+    theme: dark
+course: Applied Bayesian Analysis
+self-contained: true
+execute: 
+  warning: false
+  message: false
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+# Load necessary libraries
+
+packages <- c("tidyr","dplyr","bayesrules", "ggplot2", "gt")
+
+needs_installing <- packages[!packages %in% installed.packages()[,"Package"]]
+if(length(needs_installing)) {
+  install.packages(needs_installing)
+}
+
+for(pkg in packages){
+  if(!pkg %in% (.packages())){
+    library(pkg, character.only = TRUE)
+  }
+}
+```
+
+```{r}
+#| echo: false
+# Load the data
+data(hotel_bookings)
+# head(hotel_bookings)
+```
+
+## Data Description 
+
+```{r}
+# Convert `is_canceled` to numeric
+hotel_bookings <- hotel_bookings %>%
+  mutate(is_canceled = as.numeric(as.character(is_canceled)))
+
+# Aggregate cancellations per year and hotel type
+cancellations_by_year <- hotel_bookings %>%
+  group_by(arrival_date_year, hotel) %>%
+  summarise(total_cancellations = sum(is_canceled, na.rm = TRUE)) %>%
+  ungroup()
+
+# Plot cancellations across years, stratified by hotel type
+ggplot(cancellations_by_year, aes(x = arrival_date_year, y = total_cancellations, color = hotel, group = hotel)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(title = "Hotel Cancellations Across Years",
+       x = "Year",
+       y = "Total Cancellations",
+       color = "Hotel Type") +
+  theme_minimal()
+```
+
+
+## Slide 3
+
+```{r}
+# city_hotels <- hotel_bookings %>%
+#   filter(hotel == "City Hotel") %>%
+#   mutate(is_canceled = as.numeric(as.character(is_canceled)))
+# 
+# ggplot(city_hotels %>% filter(is_canceled == 1), aes(x = arrival_date_year)) +
+#   geom_line(stat = "count") +
+#   labs(x = "Year", y = "Number of Cancellations", title = "City Hotel Cancellations per Year") +
+#   theme_bw()
+```
+
+## Resort Bookings {.smaller}
+
+
+```{r}
+# total_cancellations <- resort_cancellations$total_cancellations
+# total_bookings <- resort_cancellations$total_bookings
+# 
+# alpha_prior <- 1
+# beta_prior <- 1
+# 
+# plot_beta(alpha_prior, beta_prior)
+# 
+# alpha_post <- alpha_prior + total_cancellations
+# beta_post <- beta_prior + total_bookings - total_cancellations
+# 
+# plot_beta_binomial(
+#   alpha = alpha_prior,
+#   beta = beta_prior,
+#   y = total_cancellations,
+#   n = total_bookings,
+#   prior = TRUE,
+#   likelihood = TRUE,
+#   posterior = TRUE
+# )
+
+#plot_binomial_likelihood()
+
+```
+
+:::{.panel-tabset}
+
+### Data
+
+```{r}
+resort_cancellations <- hotel_bookings %>%
+  filter(hotel == "Resort Hotel") %>%
+  group_by(arrival_date_year) %>%
+  summarize(
+    total_bookings = n(),
+    total_cancellations = sum(is_canceled)
+  ) %>%
+  mutate(
+    cancellation_rate = total_cancellations / total_bookings,
+    arrival_date_year = as.character(arrival_date_year)
+  )
+
+totals_row <- resort_cancellations %>%
+  summarize(
+    arrival_date_year = "Total",  # Character string
+    total_bookings = sum(total_bookings),
+    total_cancellations = sum(total_cancellations),
+    cancellation_rate = total_cancellations / total_bookings
+  )
+
+resort_cancellations <- bind_rows(resort_cancellations, totals_row)
+
+resort_cancellations %>%
+  gt() %>%
+  tab_header(title = "Resort Hotel Cancellations") %>%
+  cols_label(
+    arrival_date_year = "Year",
+    total_bookings = "Total Bookings",
+    total_cancellations = "Total Cancellations",
+    cancellation_rate = "Cancellation Rate"
+  ) %>%
+  fmt_number(columns = c(total_bookings, total_cancellations), decimals = 0) %>%
+  fmt_percent(columns = cancellation_rate, decimals = 1) %>%
+  tab_options(table.width = px(960)) %>%
+  tab_style(
+    style = list(cell_text(weight = "bold")),
+    locations = cells_body(rows = arrival_date_year == "Total")
+  )
+
+```
+
+### Prior
+To convey uncertainty about any prior knowledge, we are using a $Beta(1,1)$ PDF
+
+$$
+\begin{aligned}
+  \pi &\sim \text{Beta}(1,1) \\
+  \alpha_{\text{prior}} &= 1, \quad \beta_{\text{prior}} = 1
+\end{aligned}
+$$
+
+Uncertainty with regards to $\pi$. Intervals of the same width are equally probable.
+```{r}
+#| label: beta-1-1-plot
+#| fig-width: 5
+#| fig-height: 3
+#| fig-align: center
+
+plot_beta(1, 1)
+```
+
+### Posterior
+$$
+\begin{aligned}
+  \pi \mid (Y = y) &\sim \text{Beta}(\alpha + y, \beta + n - y) \\
+  \pi \mid (Y = 87) &\sim \text{Beta}(1 + 87, 1 + 358 - 87)
+\end{aligned}
+$$
+
+```{r}
+#| label: beta-binomial-plot
+#| fig-width: 5
+#| fig-height: 3
+#| fig-align: center
+
+plot_beta_binomial(alpha = 1, beta = 1, y = 87, n = 358)
+```
+
+### Beta-Binomial Summary
+
+```{r}
+summarize_beta_binomial(alpha = 1, beta = 1, y = 87, n = 358) %>%
+  gt() %>%
+  tab_header(title = "Beta-Binomial Summary") %>%
+  fmt_number(columns = c(mean, mode, var, sd), decimals = 4) %>%
+  tab_options(table.width = px(960))
+```
+
+### Thoughts
+Final thoughts go here.
+
+:::
+
+## Jegg
+
+```{r}
+# hotels <- hotel_bookings %>%
+#   mutate(is_canceled = as.numeric(as.character(is_canceled)))
+# 
+# ggplot(hotels %>% filter(is_canceled == 1), aes(x = arrival_date_year)) +
+#   geom_line(stat = "count") +
+#   labs(x = "Year", y = "Number of Cancellations", title = "City Hotel Cancellations per Year") +
+#   theme_bw()
+```
+
+## Posterior Comparison
+
+
