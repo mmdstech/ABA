@@ -28,7 +28,7 @@ editor:
 
 # Load necessary libraries
 
-packages <- c("tidyr","dplyr","bayesrules", "ggplot2", "gt")
+packages <- c("tidyr","dplyr","bayesrules", "ggpubr", "ggplot2", "gt")
 
 needs_installing <- packages[!packages %in% installed.packages()[,"Package"]]
 if(length(needs_installing)) {
@@ -88,7 +88,6 @@ ggplot(cancellations_by_year, aes(x = arrival_date_year, y = total_cancellations
 ```
 
 ## Resort Bookings {.smaller}
-
 
 ```{r}
 # total_cancellations <- resort_cancellations$total_cancellations
@@ -163,30 +162,38 @@ resort_cancellations %>%
 ```
 
 ### Prior
-To convey uncertainty about any prior knowledge, we are using a $Beta(1,1)$ PDF
+After reading an article on resort cancellations and our own personal histories,
+we held a prior belief that about 20% percent of bookings get cancelled.
 
+:::{.columns}
+
+::: {.column width="50%"}
 $$
 \begin{aligned}
-  \pi &\sim \text{Beta}(1,1) \\
-  \alpha_{\text{prior}} &= 1, \quad \beta_{\text{prior}} = 1
+    E[\pi] &= \frac{\alpha}{\alpha + \beta} = 0.20 \\
+    \alpha &= 0.20 \times (\alpha + \beta) \\
+    \beta &= (1 - 0.20) \times (\alpha + \beta) \\
+          &= 0.80 \times (\alpha + \beta)
 \end{aligned}
 $$
-
-Uncertainty with regards to $\pi$. Intervals of the same width are equally probable.
+:::
+::: {.column width="50%"}
 ```{r}
 #| label: beta-1-1-plot
 #| fig-width: 5
 #| fig-height: 3
 #| fig-align: center
 
-plot_beta(1, 1)
+plot_beta(5, 20)
 ```
-
+:::
+:::
 ### Posterior
 $$
 \begin{aligned}
   \pi \mid (Y = y) &\sim \text{Beta}(\alpha + y, \beta + n - y) \\
-  \pi \mid (Y = 87) &\sim \text{Beta}(1 + 87, 1 + 358 - 87)
+  \pi \mid (Y = 87) &\sim \text{Beta}(5 + 87, 20 + 358 - 87) \\
+  \pi \mid (Y = 87) &\sim \text{Beta}(92, 291)
 \end{aligned}
 $$
 
@@ -196,21 +203,40 @@ $$
 #| fig-height: 3
 #| fig-align: center
 
-plot_beta_binomial(alpha = 1, beta = 1, y = 87, n = 358)
+plot_beta_binomial(alpha = 5, beta = 20, y = 87, n = 358)
 ```
 
-### Beta-Binomial Summary
+<!-- ### Beta-Binomial Summary -->
+
+<!-- ```{r} -->
+<!-- summarize_beta_binomial(alpha = 5, beta = 20, y = 87, n = 358) %>% -->
+<!--   gt() %>% -->
+<!--   tab_header(title = "Beta-Binomial Summary") %>% -->
+<!--   fmt_number(columns = c(mean, mode, var, sd), decimals = 4) %>% -->
+<!--   tab_options(table.width = px(960)) -->
+<!-- ``` -->
+
+### Prior vs Posterior
 
 ```{r}
-summarize_beta_binomial(alpha = 1, beta = 1, y = 87, n = 358) %>%
-  gt() %>%
-  tab_header(title = "Beta-Binomial Summary") %>%
-  fmt_number(columns = c(mean, mode, var, sd), decimals = 4) %>%
-  tab_options(table.width = px(960))
+prior_plot<-plot_beta(5,20)+ theme_bw() + ggtitle("Prior: Beta (5, 20)")
+posterior_plot<-plot_beta(92, 291) + theme_bw() + ggtitle("Posterior: Beta (92, 291)")
+
+ggarrange(prior_plot,posterior_plot)
 ```
 
+
 ### Thoughts
-Final thoughts go here.
+
+- Initially assumed **Beta(1,1)** (complete uncertainty).
+- After research, believed cancellations were **low** (~20%):
+  
+$$
+  E[\pi] = \frac{\alpha}{\alpha + \beta} = 0.20
+$$
+
+- Set weak prior: ($\alpha + \beta = 25$) (low confidence).
+- Likelihood dominated posterior due to large data influence.
 
 :::
 
