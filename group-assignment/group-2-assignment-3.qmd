@@ -11,6 +11,7 @@ date-format: long
 format:
   revealjs:
     theme: dark
+    css: styles.css
 course: Applied Bayesian Analysis
 self-contained: true
 execute: 
@@ -23,16 +24,14 @@ editor:
 
 ```{r}
 #| echo: false
-#| warning: false
-#| message: false
 
 # Load necessary libraries
 
-packages <- c("tidyr","dplyr","bayesrules", "ggpubr", "ggplot2", "gt")
+packages <- c("tidyr","dplyr","bayesrules", "ggpubr", "ggplot2", "gt", "patchwork")
 
 needs_installing <- packages[!packages %in% installed.packages()[,"Package"]]
 if(length(needs_installing)) {
-  install.packages(needs_installing)
+  install.packages(needs_installing, repos = "https://cran.rstudio.com/")
 }
 
 for(pkg in packages){
@@ -74,52 +73,101 @@ ggplot(cancellations_by_year, aes(x = arrival_date_year, y = total_cancellations
 ```
 
 
-## Slide 3
+## Hotel Bookings {.smaller}
+
+Data Preparation
+```{r}
+# load the hotel_bookings dataset
+data("hotel_bookings")
+
+# filter data for city hotels
+city_hotels <- hotel_bookings %>%
+  filter(hotel == "City Hotel") %>%
+  mutate(is_canceled = as.numeric(as.character(is_canceled)))
+
+# cancellations and total bookings for city hotels
+city_totals <- city_hotels %>%
+  summarise(
+    total_bookings = n(),
+    total_cancellations = sum(is_canceled)
+  )
+
+# display data summary as a cleaner table
+library(gt)
+city_totals %>%
+  gt() %>%
+  tab_header(
+    title = "Summary of City Hotel Data",
+    subtitle = "Bookings and Cancellations"
+  ) %>%
+  cols_label(
+    total_bookings = "Total Bookings",
+    total_cancellations = "Total Cancellations"
+  )
+```
+
+Prior and Posterior Distributions
 
 ```{r}
-# city_hotels <- hotel_bookings %>%
-#   filter(hotel == "City Hotel") %>%
-#   mutate(is_canceled = as.numeric(as.character(is_canceled)))
-# 
-# ggplot(city_hotels %>% filter(is_canceled == 1), aes(x = arrival_date_year)) +
-#   geom_line(stat = "count") +
-#   labs(x = "Year", y = "Number of Cancellations", title = "City Hotel Cancellations per Year") +
-#   theme_bw()
+# define prior parameters
+alpha_prior <- 8.35  # Reflects the 41.73% prior expectation
+beta_prior <- 11.65
 ```
+
+Update the Posterior
+
+```{r}
+# posterior calculation
+y <- city_totals$total_cancellations  # Number of cancellations (successes)
+n <- city_totals$total_bookings       # Total bookings (trials)
+
+alpha_posterior <- alpha_prior + y
+beta_posterior <- beta_prior + n - y
+
+# display posterior parameters in a clear format
+cat("Posterior Distribution Parameters:\n")
+cat(paste0("Alpha (Successes): ", round(alpha_posterior, 2), "\n"))
+cat(paste0("Beta (Failures): ", round(beta_posterior, 2), "\n"))
+```
+
+Visualize the Prior and Posterior
+
+```{r}
+# plot prior distribution
+prior_plot <- plot_beta(alpha_prior, beta_prior) + 
+  theme_minimal() +
+  ggtitle("Prior: Beta (8.35, 11.65)") +
+  theme_bw()
+
+# plot posterior distribution
+posterior_plot <- plot_beta(alpha_posterior, beta_posterior) + 
+  theme_minimal() +
+  ggtitle(paste0("Posterior: Beta (", alpha_posterior, ", ", beta_posterior, ")")) +
+  theme_bw()
+
+# use patchwork to combine plots side-by-side
+combined_plot <- prior_plot + posterior_plot +
+  plot_annotation(
+    title = "Prior vs Posterior Distributions for City Hotels",
+    subtitle = "The posterior distribution is updated using observed data",
+    theme = theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"))
+  )
+combined_plot
+```
+
 
 ## Resort Bookings {.smaller}
-
-```{r}
-# total_cancellations <- resort_cancellations$total_cancellations
-# total_bookings <- resort_cancellations$total_bookings
-# 
-# alpha_prior <- 1
-# beta_prior <- 1
-# 
-# plot_beta(alpha_prior, beta_prior)
-# 
-# alpha_post <- alpha_prior + total_cancellations
-# beta_post <- beta_prior + total_bookings - total_cancellations
-# 
-# plot_beta_binomial(
-#   alpha = alpha_prior,
-#   beta = beta_prior,
-#   y = total_cancellations,
-#   n = total_bookings,
-#   prior = TRUE,
-#   likelihood = TRUE,
-#   posterior = TRUE
-# )
-
-#plot_binomial_likelihood()
-
-```
 
 :::{.panel-tabset}
 
 ### Data
 
 ```{r}
+data("hotel_bookings")
+
+hotel_bookings <- hotel_bookings %>%
+  mutate(is_canceled = as.numeric(as.character(is_canceled)))
+
 resort_cancellations <- hotel_bookings %>%
   filter(hotel == "Resort Hotel") %>%
   group_by(arrival_date_year) %>%
@@ -206,16 +254,6 @@ $$
 plot_beta_binomial(alpha = 5, beta = 20, y = 87, n = 358)
 ```
 
-<!-- ### Beta-Binomial Summary -->
-
-<!-- ```{r} -->
-<!-- summarize_beta_binomial(alpha = 5, beta = 20, y = 87, n = 358) %>% -->
-<!--   gt() %>% -->
-<!--   tab_header(title = "Beta-Binomial Summary") %>% -->
-<!--   fmt_number(columns = c(mean, mode, var, sd), decimals = 4) %>% -->
-<!--   tab_options(table.width = px(960)) -->
-<!-- ``` -->
-
 ### Prior vs Posterior
 
 ```{r}
@@ -240,17 +278,207 @@ $$
 
 :::
 
-## Jegg
+## Combined Resort and Hotel Bookings {.smaller}
+:::{.scrollable}
+  a.  Resort Cancellation Code
+```{r}
+#| echo: false
+
+resort_cancellations <- hotel_bookings %>%
+  filter(hotel == "Resort Hotel") %>%
+  group_by(arrival_date_year) %>%
+  summarize(
+    total_bookings = n(),
+    total_cancellations = sum(is_canceled)
+  ) %>%
+  mutate(
+    cancellation_rate = total_cancellations / total_bookings,
+    arrival_date_year = as.character(arrival_date_year)  
+  )
+
+
+totals_row <- resort_cancellations %>%
+  summarize(
+    arrival_date_year = "Total",  
+    total_bookings = sum(total_bookings),
+    total_cancellations = sum(total_cancellations),
+    cancellation_rate = total_cancellations / total_bookings
+  )
+
+
+resort_cancellations <- bind_rows(resort_cancellations, totals_row)
+
+resort_cancellations %>%
+  gt() %>%
+  tab_header(title = "Resort Hotel Cancellations") %>%
+  cols_label(
+    arrival_date_year = "Year",
+    total_bookings = "Total Bookings",
+    total_cancellations = "Total Cancellations",
+    cancellation_rate = "Cancellation Rate"
+  ) %>%
+  fmt_number(columns = c(total_bookings, total_cancellations), decimals = 0) %>%
+  fmt_percent(columns = cancellation_rate, decimals = 1) %>%
+  tab_options(table.width = pct(100)) %>%  
+  tab_style(
+    style = cell_text(weight = "bold"),  
+    locations = cells_body(rows = arrival_date_year == "Total")
+  )
+
+```
+
+  b.  Hotel Cancellation Code
+```{r}
+#| echo: false
+
+city_cancellations <- hotel_bookings %>%
+  filter(hotel == "City Hotel") %>%
+  group_by(arrival_date_year) %>%
+  summarize(
+    total_bookings = n(),
+    total_cancellations = sum(is_canceled)
+  ) %>%
+  mutate(
+    cancellation_rate = total_cancellations / total_bookings,
+    arrival_date_year = as.character(arrival_date_year)  
+  )
+
+
+totals_row <- city_cancellations %>%
+  summarize(
+    arrival_date_year = "Total",  
+    total_bookings = sum(total_bookings),
+    total_cancellations = sum(total_cancellations),
+    cancellation_rate = total_cancellations / total_bookings
+  )
+
+
+city_cancellations <- bind_rows(city_cancellations, totals_row)
+
+
+city_cancellations %>%
+  gt() %>%
+  tab_header(title = "City Hotel Cancellations") %>%
+  cols_label(
+    arrival_date_year = "Year",
+    total_bookings = "Total Bookings",
+    total_cancellations = "Total Cancellations",
+    cancellation_rate = "Cancellation Rate"
+  ) %>%
+  fmt_number(columns = c(total_bookings, total_cancellations), decimals = 0) %>%
+  fmt_percent(columns = cancellation_rate, decimals = 1) %>%
+  tab_options(table.width = pct(100)) %>%  
+  tab_style(
+    style = cell_text(weight = "bold"),  # Ensure correct style formatting
+    locations = cells_body(rows = arrival_date_year == "Total")
+  )
+```
+
+**Prior**
+
+Based on research and past data trends, we establish the following prior
+beliefs for cancellation rates: Resort Hotels: We assume a prior
+cancellation rate of 20% based on industry trends and historical data,
+as resort bookings tend to be more stable due to vacation planning and
+reservations. City Hotels: We assume a higher prior cancellation.
+rate of 30%, given the more dynamic nature of city travel, business trip
+adjustments, and shorter booking windows, leading to increased.
+cancellations. 
+
+**Resort**
+
+$$
+ \begin{aligned}
+    E[\pi] &= \frac{\alpha}{\alpha + \beta} = 0.20 \\
+    \alpha &= 0.20 \times (\alpha + \beta) \\
+    \beta &= (1 - 0.20) \times (\alpha + \beta) \\
+          &= 0.80 \times (\alpha + \beta)
+\end{aligned}
+$$
 
 ```{r}
-# hotels <- hotel_bookings %>%
-#   mutate(is_canceled = as.numeric(as.character(is_canceled)))
-# 
-# ggplot(hotels %>% filter(is_canceled == 1), aes(x = arrival_date_year)) +
-#   geom_line(stat = "count") +
-#   labs(x = "Year", y = "Number of Cancellations", title = "City Hotel Cancellations per Year") +
-#   theme_bw()
+#| label: beta-1-1-plot-2
+#| fig-width: 5
+#| fig-height: 3
+#| fig-align: center
+
+plot_beta(4, 16)
 ```
+**City**
+$$
+\begin{aligned}
+    E[\pi] &= \frac{\alpha}{\alpha + \beta} = 0.30 \\
+    \alpha &= 0.30 \times (\alpha + \beta) \\
+    \beta &= (1 - 0.30) \times (\alpha + \beta) \\
+          &= 0.70 \times (\alpha + \beta)
+\end{aligned}
+$$
+
+```{r}
+#| label: beta-1-1-plot-3
+#| fig-width: 5
+#| fig-height: 3
+#| fig-align: center
+
+plot_beta(6, 14)
+```
+
+**Posterior-Resort:**
+$$
+\begin{aligned}
+  \pi \mid (Y = y) &\sim \text{Beta}(\alpha + y, \beta + n - y) \\
+  \pi \mid (Y = 87) &\sim \text{Beta}(4 + 87, 16 + 358 - 87) \\
+  \pi \mid (Y = 87) &\sim \text{Beta}(91, 287)
+\end{aligned}
+$$ 
+
+**Posterior- City:**
+$$
+\begin{aligned}
+  \pi \mid (Y = y) &\sim \text{Beta}(\alpha + y, \beta + n - y) \\
+  \pi \mid (Y = 87) &\sim \text{Beta}(6 + 87, 14 + 358 - 87) \\
+  \pi \mid (Y = 87) &\sim \text{Beta}(93, 285)
+\end{aligned}
+$$
+
+**Resort**
+```{r}
+#| label: beta-binomial-plot-2
+#| fig-width: 5
+#| fig-height: 3
+#| fig-align: center
+
+plot_beta_binomial(alpha = 4, beta = 16, y = 87, n = 358)
+```
+
+**Prior vs Posterior**
+City:
+```{r}
+#| label: beta-binomial-plot-3
+#| fig-width: 5
+#| fig-height: 3
+#| fig-align: center
+
+plot_beta_binomial(alpha = 6, beta = 14, y = 87, n = 358)
+```
+
+Resort:
+```{r}
+prior_plot<-plot_beta(4,16)+ theme_bw() + ggtitle("Prior: Beta (4, 16)")
+posterior_plot<-plot_beta(91, 287) + theme_bw() + ggtitle("Posterior: Beta (91, 287)")
+
+ggarrange(prior_plot,posterior_plot)
+```
+
+City:
+```{r}
+prior_plot<-plot_beta(6,14)+ theme_bw() + ggtitle("Prior: Beta (6, 14)")
+posterior_plot<-plot_beta(93, 285) + theme_bw() + ggtitle("Posterior: Beta (93, 28)")
+
+ggarrange(prior_plot,posterior_plot)
+```
+
+:::
 
 ## Posterior Comparison
 
