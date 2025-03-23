@@ -589,9 +589,8 @@ plot_beta_binomial(alpha = 6, beta = 14, y = 87, n = 358)
 :::
 :::
 
-### Comparison
+### Resort Comparison
 
-Resort Prior vs P:
 ```{r}
 prior_plot<-plot_beta(4,16)+ theme_bw() + ggtitle("Prior: Beta (4, 16)")
 posterior_plot<-plot_beta(91, 287) + theme_bw() + ggtitle("Posterior: Beta (91, 287)")
@@ -599,7 +598,7 @@ posterior_plot<-plot_beta(91, 287) + theme_bw() + ggtitle("Posterior: Beta (91, 
 ggarrange(prior_plot, posterior_plot)
 ```
 
-City:
+### City Comparison
 ```{r}
 prior_plot<-plot_beta(6,14)+ theme_bw() + ggtitle("Prior: Beta (6, 14)")
 posterior_plot<-plot_beta(93, 285) + theme_bw() + ggtitle("Posterior: Beta (93, 28)")
@@ -609,8 +608,14 @@ ggarrange(prior_plot,posterior_plot)
 
 :::
 
-## Posterior Models - Comparison
+## Posterior Models - Comparison {.smaller}
 
-  - Point Given
-  - Point Taken
-  - In Short
+| Booking Type | Posterior Summary |
+|--------------|-------------------|
+| **Hotel**    | $\theta_{\text{hotel}} \sim \text{Beta}(287.35,\ 374.65)$<br>$\mathbb{P}(0.41 \leq \theta_{\text{hotel}} \leq 0.47) \approx 0.95$ |
+| **Resort**   | $\theta_{\text{resort}} \sim \text{Beta}(92,\ 291)$<br>$\mathbb{P}(0.21 \leq \theta_{\text{resort}} \leq 0.28) \approx 0.95$ |
+
+  - The posterior models closely align with the observed cancellation trends in the data, likely due to:
+    - the number of data observations dominating weak prior beliefs, 
+    - strong prior beliefs closely aligning with the data, or 
+    - a combination of both.
