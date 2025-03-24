@@ -594,8 +594,8 @@ ggarrange(prior_plot,posterior_plot)
 #| echo: false
 #| output: false
 
-alpha_hotel <- 287.35
-beta_hotel  <- 374.65
+alpha_hotel <- 284
+beta_hotel  <- 369
 
 alpha_resort <- 92
 beta_resort  <- 291
@@ -607,7 +607,7 @@ beta_resort  <- 291
 
 | Booking Type | Posterior Summary |
 |--------------|-------------------|
-| **Hotel**    | $\theta_{\text{hotel}} \sim \text{Beta}(287.35,\ 374.65)$<br>$\mathbb{P}(0.40 \leq \theta_{\text{hotel}} \leq 0.47) \approx 0.95$ |
+| **Hotel**    | $\theta_{\text{hotel}} \sim \text{Beta}(284,\ 369)$<br>$\mathbb{P}(0.40 \leq \theta_{\text{hotel}} \leq 0.47) \approx 0.95$ |
 | **Resort**   | $\theta_{\text{resort}} \sim \text{Beta}(92,\ 291)$<br>$\mathbb{P}(0.20 \leq \theta_{\text{resort}} \leq 0.28) \approx 0.95$ |
 
   - The likely cancellation rate for hotels is around double that of resorts.
