@@ -630,7 +630,8 @@ beta_resort  <- 291
 | **Hotel**    | $\theta_{\text{hotel}} \sim \text{Beta}(287.35,\ 374.65)$<br>$\mathbb{P}(0.40 \leq \theta_{\text{hotel}} \leq 0.47) \approx 0.95$ |
 | **Resort**   | $\theta_{\text{resort}} \sim \text{Beta}(92,\ 291)$<br>$\mathbb{P}(0.20 \leq \theta_{\text{resort}} \leq 0.28) \approx 0.95$ |
 
-  - The posterior models closely align with the observed cancellation trends in the data, likely due to:
+  - The likely cancellation rate for hotels is around double that of resorts.
+  - Furthermore, the posterior models closely align with the observed cancellation trends in the data, likely due to:
     - the number of data observations dominating weak prior beliefs, 
     - strong prior beliefs closely aligning with the data, or 
     - a combination of both.
