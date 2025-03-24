@@ -51,66 +51,6 @@ data(hotel_bookings)
 ## Data Description 
 
 ```{r}
-# # Convert `is_canceled` to numeric
-# hotel_bookings <- hotel_bookings %>%
-#   mutate(is_canceled = as.numeric(as.character(is_canceled)))
-# 
-# # Aggregate cancellations per year and hotel type
-# cancellations_by_year <- hotel_bookings %>%
-#   group_by(arrival_date_year, hotel) %>%
-#   summarise(total_cancellations = sum(is_canceled, na.rm = TRUE)) %>%
-#   ungroup()
-# 
-# # Plot cancellations across years, stratified by hotel type
-# total_cancellations_plot <- ggplot(cancellations_by_year, aes(x = arrival_date_year, y = total_cancellations, color = hotel, group = hotel)) +
-#   geom_line(size = 1) +
-#   geom_point(size = 2) +
-#   labs(title = "Hotel Cancellations Across Years",
-#        x = "Year",
-#        y = "Total Cancellations",
-#        color = "Hotel Type") +
-#   theme_minimal()
-
-# Convert `is_canceled` to numeric
-# hotel_bookings <- hotel_bookings %>%
-#   mutate(is_canceled = as.numeric(as.character(is_canceled)))
-# 
-# # Aggregate cancellations per year and hotel type
-# bookings_summary <- hotel_bookings %>%
-#   group_by(arrival_date_year, hotel) %>%
-#   summarise(
-#     total_bookings = n(),
-#     cancellations = sum(is_canceled, na.rm = TRUE),
-#     kept_bookings = total_bookings - cancellations
-#   ) %>%
-#   ungroup()
-# 
-# # Reshape data to long format but exclude total_bookings
-# bookings_long <- bookings_summary %>%
-#   select(-total_bookings) %>%  # Remove total_bookings as it's redundant
-#   pivot_longer(cols = c("kept_bookings", "cancellations"),
-#                names_to = "Booking_Status", values_to = "Count")
-# 
-# # Rename levels for better readability
-# bookings_long$Booking_Status <- factor(bookings_long$Booking_Status, 
-#                                        levels = c("cancellations", "kept_bookings"),
-#                                        labels = c("Canceled", "Kept"))
-# 
-# # Create the correct stacked bar chart
-# stacked_comparison_plot <- ggplot(bookings_long, aes(x = as.factor(arrival_date_year), y = Count, fill = Booking_Status)) +
-#   geom_bar(stat = "identity", position = "stack") +
-#   facet_wrap(~hotel) + # Separate charts for each hotel type
-#   labs(title = "Hotel Bookings: Cancellations vs. Kept Bookings",
-#        x = "Year",
-#        y = "Number of Bookings",
-#        fill = "Booking Status") +
-#   theme_minimal() +
-#   scale_fill_manual(values = c("#C44D58", "#56B4E9"))  # Brownish-orange and deep teal
-
-
-```
-
-```{r}
 # Ensure `is_canceled` is numeric
 hotel_bookings <- hotel_bookings %>%
   mutate(is_canceled = as.numeric(as.character(is_canceled)))
@@ -182,86 +122,126 @@ combined_plot
 
 ## Hotel Bookings {.smaller}
 
-Data Preparation
+:::{.panel-tabset}
+
+### Data
+
 ```{r}
-# load the hotel_bookings dataset
 data("hotel_bookings")
 
-# filter data for city hotels
-city_hotels <- hotel_bookings %>%
-  filter(hotel == "City Hotel") %>%
+hotel_bookings <- hotel_bookings %>%
   mutate(is_canceled = as.numeric(as.character(is_canceled)))
 
-# cancellations and total bookings for city hotels
-city_totals <- city_hotels %>%
-  summarise(
+hotel_cancellations <- hotel_bookings %>%
+  filter(hotel == "City Hotel") %>%
+  group_by(arrival_date_year) %>%
+  summarize(
     total_bookings = n(),
     total_cancellations = sum(is_canceled)
-  )
-
-# display data summary as a cleaner table
-library(gt)
-city_totals %>%
-  gt() %>%
-  tab_header(
-    title = "Summary of City Hotel Data",
-    subtitle = "Bookings and Cancellations"
   ) %>%
+  mutate(
+    cancellation_rate = total_cancellations / total_bookings,
+    arrival_date_year = as.character(arrival_date_year)
+  )
+
+totals_row <- hotel_cancellations %>%
+  summarize(
+    arrival_date_year = "Total",  # Character string
+    total_bookings = sum(total_bookings),
+    total_cancellations = sum(total_cancellations),
+    cancellation_rate = total_cancellations / total_bookings
+  )
+
+hotel_cancellations <- bind_rows(hotel_cancellations, totals_row)
+
+hotel_cancellations %>%
+  gt() %>%
+  tab_header(title = "City Hotel Cancellations") %>%
   cols_label(
+    arrival_date_year = "Year",
     total_bookings = "Total Bookings",
-    total_cancellations = "Total Cancellations"
+    total_cancellations = "Total Cancellations",
+    cancellation_rate = "Cancellation Rate"
+  ) %>%
+  fmt_number(columns = c(total_bookings, total_cancellations), decimals = 0) %>%
+  fmt_percent(columns = cancellation_rate, decimals = 1) %>%
+  tab_options(table.width = px(960)) %>%
+  tab_style(
+    style = list(cell_text(weight = "bold")),
+    locations = cells_body(rows = arrival_date_year == "Total")
   )
+
 ```
 
-Prior and Posterior Distributions
+### Prior
+After reading an article on city hotel cancellations, calling multiple hotels in the city, and our own personal histories,
+we held a prior belief that about 40% percent of bookings get cancelled.
+
+:::{.columns}
+
+::: {.column width="50%"}
+$$
+\begin{aligned}
+    E[\pi] &= \frac{\alpha}{\alpha + \beta} = 0.40 \\
+    \alpha &= 0.40 \times (\alpha + \beta) \\
+    \beta &= (1 - 0.40) \times (\alpha + \beta) \\
+          &= 0.60 \times (\alpha + \beta)
+\end{aligned}
+$$
+:::
+::: {.column width="50%"}
+```{r}
+#| label: beta-1-1-plot-city
+#| fig-width: 5
+#| fig-height: 3
+#| fig-align: center
+
+plot_beta(5, 6)
+```
+:::
+:::
+
+### Posterior
+$$
+\begin{aligned}
+  \pi \mid (Y = y) &\sim \text{Beta}(\alpha + y, \beta + n - y) \\
+  \pi \mid (Y = 279) &\sim \text{Beta}(5 + 279, 6 + 642 - 279) \\
+  \pi \mid (Y = 279) &\sim \text{Beta}(284, 369)
+\end{aligned}
+$$
 
 ```{r}
-# define prior parameters
-alpha_prior <- 8.35  # Reflects the 41.73% prior expectation
-beta_prior <- 11.65
+#| label: beta-binomial-plot-city
+#| fig-width: 5
+#| fig-height: 3
+#| fig-align: center
+
+plot_beta_binomial(alpha = 5, beta = 6, y = 279, n = 642)
 ```
 
-Update the Posterior
+### Prior vs Posterior
 
 ```{r}
-# posterior calculation
-y <- city_totals$total_cancellations  # Number of cancellations (successes)
-n <- city_totals$total_bookings       # Total bookings (trials)
+prior_plot <- plot_beta(5,6) + theme_bw() + ggtitle("Prior: Beta (5, 6)")
+posterior_plot <- plot_beta(284, 369) + theme_bw() + ggtitle("Posterior: Beta (284, 369)")
 
-alpha_posterior <- alpha_prior + y
-beta_posterior <- beta_prior + n - y
-
-# display posterior parameters in a clear format
-cat("Posterior Distribution Parameters:\n")
-cat(paste0("Alpha (Successes): ", round(alpha_posterior, 2), "\n"))
-cat(paste0("Beta (Failures): ", round(beta_posterior, 2), "\n"))
+ggarrange(prior_plot, posterior_plot)
 ```
 
-Visualize the Prior and Posterior
 
-```{r}
-# plot prior distribution
-prior_plot <- plot_beta(alpha_prior, beta_prior) + 
-  theme_minimal() +
-  ggtitle("Prior: Beta (8.35, 11.65)") +
-  theme_bw()
+### Thoughts
 
-# plot posterior distribution
-posterior_plot <- plot_beta(alpha_posterior, beta_posterior) + 
-  theme_minimal() +
-  ggtitle(paste0("Posterior: Beta (", alpha_posterior, ", ", beta_posterior, ")")) +
-  theme_bw()
+- Initially assumed **Beta(1,1)** (complete uncertainty).
+- After research, believed cancellations were **low** (~40%):
+  
+$$
+  E[\pi] = \frac{\alpha}{\alpha + \beta} = 0.40
+$$
 
-# use patchwork to combine plots side-by-side
-combined_plot <- prior_plot + posterior_plot +
-  plot_annotation(
-    title = "Prior vs Posterior Distributions for City Hotels",
-    subtitle = "The posterior distribution is updated using observed data",
-    theme = theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"))
-  )
-combined_plot
-```
+- Set weak prior: ($\alpha + \beta = 25$) (low confidence).
+- Likelihood dominated posterior due to large data influence.
 
+:::
 
 ## Resort Bookings {.smaller}
 
