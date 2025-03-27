@@ -27,7 +27,7 @@ editor:
 
 # Load necessary libraries
 
-packages <- c("tidyr","dplyr", "ggpubr", "ggplot2", "gt", "patchwork", "bayesrules")
+packages <- c("tidyr","dplyr", "ggpubr", "ggplot2", "gt", "patchwork", "bayesrules", "rstan", "bayesplot")
 
 needs_installing <- packages[!packages %in% installed.packages()[,"Package"]]
 if(length(needs_installing)) {
@@ -39,6 +39,15 @@ for(pkg in packages){
     library(pkg, character.only = TRUE)
   }
 }
+```
+<!-- rstan version 2.32.7 (Stan version 2.32.2)
+ For execution on a local, multicore CPU with excess RAM we recommend calling
+ options(mc.cores = parallel::detectCores()).
+ To avoid recompilation of unchanged Stan programs, we recommend calling
+ rstan_options(auto_write = TRUE) -->
+```{r}
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
 ```
 
 ```{r}
@@ -615,3 +624,95 @@ beta_resort  <- 291
     - the number of data observations dominating weak prior beliefs, 
     - strong prior beliefs closely aligning with the data, or 
     - a combination of both.
+    
+## MCMC - Resorts {.smaller}
+
+:::{.panel-tabset}
+
+```{r}
+bb_resort_model <- "
+  data {
+    int<lower = 0> N;
+    int<lower = 0, upper = N> Y;
+  }
+  parameters {
+    real<lower = 0, upper = 1> pi;
+  }
+  model {
+    Y ~ binomial(N, pi);
+    pi ~ beta(5, 20);
+  }
+"
+
+bb_resort_sim <- stan(model_code = bb_resort_model, data = list(Y = 87, N = 358), 
+               chains = 4, iter = 10000*2, seed = 84735)
+```
+
+### Trace Plot
+```{r}
+#| label: resort-mcmc-trace
+#| fig-width: 7
+#| fig-height: 4.2
+#| fig-align: center
+
+
+# Trace and rank plots of MCMC draws
+library(coda)
+
+pi_samples <- extract(bb_resort_sim)$pi
+pi_matrix <- matrix(pi_samples, ncol = 1)
+colnames(pi_matrix) <- "pi"
+
+pi_mcmc <- as.mcmc(pi_matrix)
+hdi_bounds <- HPDinterval(pi_mcmc, prob = 0.25)
+hdi_lower <- hdi_bounds[1]
+hdi_upper <- hdi_bounds[2]
+
+posterior_mean <- mean(pi_samples)
+
+mcmc_trace(bb_resort_sim, pars = "pi", size = 0.1) +
+  geom_hline(yintercept = hdi_lower, linetype = "dashed", color = "red") +
+  geom_hline(yintercept = hdi_upper, linetype = "dashed", color = "red") +
+  annotate("text", x = 0, y = posterior_mean, 
+           label = sprintf("Mean = %.3f", posterior_mean), 
+           color = "blue", hjust = 0) +
+  annotate("rect",
+           xmin = -Inf, xmax = Inf,
+           ymin = hdi_lower, ymax = hdi_upper,
+           alpha = 0.1, fill = "red") +
+  ggtitle("Trace Plot of π with 25% Highest Density Interval")
+```
+
+### MC Histogram
+```{r}
+# Histogram of the Markov chain values
+mcmc_hist(bb_resort_sim, pars = "pi") +
+  yaxis_text(TRUE) + 
+  ylab("count")
+```
+
+### MC Density
+```{r}
+# Density plot of the Markov chain values
+mcmc_dens(bb_resort_sim, pars = "pi") + 
+  yaxis_text(TRUE) + 
+  ylab("density")
+```
+
+### MC ACF
+```{r}
+# Grid of autocorrelation plots by chain and parameter
+mcmc_acf(bb_resort_sim, pars = "pi")
+```
+
+### Summary
+```{r}
+summary_df <- as.data.frame(summary(bb_resort_sim)$summary)
+posterior_df <- summary_df["pi", c("mean", "25%", "50%", "75%", "n_eff", "Rhat")]
+knitr::kable(posterior_df, digits = 4, caption = "Posterior Summary for π")
+```
+:::
+
+
+
+
